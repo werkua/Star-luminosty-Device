@@ -1,0 +1,226 @@
+#include<Stepper.h>
+#include <BH1750.h>
+#include <Wire.h>
+
+BH1750 lightMeter(0x23);
+
+// #include<> biblioteka dla czujników natężenia światła 
+// silnik krokowy 1 - główny, wykonujący obrót w płasczyźnie równoległej do podłoża;
+#define STEPPER1_PIN_1 9
+#define STEPPER1_PIN_2 10
+#define STEPPER1_PIN_3 11
+#define STEPPER1_PIN_4 12
+
+// silnik krokowy 2 - główny, wykonujący obrót w płasczyźnie prostopadłej do podłoża;
+#define STEPPER2_PIN_1 1
+#define STEPPER2_PIN_2 2
+#define STEPPER2_PIN_3 3
+#define STEPPER2_PIN_4 4
+
+// czujniki natężnia światła 
+int ldr1center = A0;
+int ldr2left = A1;
+int ldr3right = A2;
+
+int step_number_1 = 0;
+int step_number_2 = 0;
+
+void setup() {
+	pinMode(STEPPER1_PIN_1, OUTPUT);
+	pinMode(STEPPER1_PIN_2, OUTPUT);
+	pinMode(STEPPER1_PIN_3, OUTPUT);
+	pinMode(STEPPER1_PIN_4, OUTPUT);
+	pinMode(STEPPER2_PIN_1, OUTPUT);
+	pinMode(STEPPER2_PIN_2, OUTPUT);
+	pinMode(STEPPER2_PIN_3, OUTPUT);
+	pinMode(STEPPER2_PIN_4, OUTPUT);
+
+	// czujniki natężnia światła 
+	pinMode(ldr1center, INPUT); // czunik 1
+	pinMode(ldr2left, INPUT); // czujnik 2
+	pinMode(ldr3right, INPUT); // czujnik 3
+
+	delay(2000);
+	Serial.begin(9600);
+
+
+}
+
+void loop() {
+	int czujnik1 = analogRead(ldr1center);
+	int czujnik2 = analogRead(ldr2left);
+	int czujnik3 = analogRead(ldr3right);
+/*
+	if (czujnik1 > czujnik2 && czujnik1 > czujnik3) {
+		straight();
+		delay(1000);
+		Serial.println("straight");
+	}
+*/
+	//else
+	if (czujnik2 > czujnik1 && czujnik2 > czujnik3) {
+		left();
+		//Serial.println("left");
+		delay(600);
+	}
+
+	else if (czujnik3 > czujnik1 && czujnik3 > czujnik2) {
+		right();
+		delay(600);
+	//	Serial.println("right");
+	}
+
+	OneStep_1(false); // false powoduje ruch w jedną stornę, true w drugą 
+	delay(2);
+	OneStep_2(false);
+
+}
+/* 
+void straight() {
+	digitalWrite(input1leftmotor, HIGH);
+	digitalWrite(input2leftmotor, LOW);
+	digitalWrite(input3rightmotor, HIGH);
+	digitalWrite(input4rightmotor, LOW);
+}
+*/
+void left() {
+	OneStep_1(false);
+	OneStep_2(false);
+}
+
+void right() {
+	OneStep_1(true);
+	OneStep_2(true);
+}
+
+
+// funckja do wykonania jednego kroku 
+void OneStep_1(bool dir) {
+	if (dir) {
+		switch (step_number_1) {
+		case 0:
+			digitalWrite(STEPPER1_PIN_1, HIGH);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			break;
+		case 1:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, HIGH);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			break;
+		case 2:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, HIGH);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			break;
+		case 3:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, HIGH);
+			break;
+		}
+	}
+	else {
+		switch (step_number_1) {
+		case 0:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, HIGH);
+			break;
+		case 1:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, HIGH);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			break;
+		case 2:
+			digitalWrite(STEPPER1_PIN_1, LOW);
+			digitalWrite(STEPPER1_PIN_2, HIGH);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			break;
+		case 3:
+			digitalWrite(STEPPER1_PIN_1, HIGH);
+			digitalWrite(STEPPER1_PIN_2, LOW);
+			digitalWrite(STEPPER1_PIN_3, LOW);
+			digitalWrite(STEPPER1_PIN_4, LOW);
+			
+
+		}
+	}
+	step_number_1++;
+	if (step_number_1 > 3) {
+		step_number_1 = 0;
+	}
+}
+void OneStep_2(bool dir) {
+	if (dir) {
+		switch (step_number_2) {
+		case 0:
+			digitalWrite(STEPPER2_PIN_1, HIGH);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+			break;
+		case 1:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, HIGH);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+			break;
+		case 2:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, HIGH);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+			break;
+		case 3:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, HIGH);
+			break;
+		}
+	}
+	else {
+		switch (step_number_2) {
+		case 0:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, HIGH);
+			break;
+		case 1:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, HIGH);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+			break;
+		case 2:
+			digitalWrite(STEPPER2_PIN_1, LOW);
+			digitalWrite(STEPPER2_PIN_2, HIGH);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+			break;
+		case 3:
+			digitalWrite(STEPPER2_PIN_1, HIGH);
+			digitalWrite(STEPPER2_PIN_2, LOW);
+			digitalWrite(STEPPER2_PIN_3, LOW);
+			digitalWrite(STEPPER2_PIN_4, LOW);
+
+
+		}
+	}
+	step_number_2++;
+	if (step_number_2 > 3) {
+		step_number_2 = 0;
+	}
+}
+
+
+

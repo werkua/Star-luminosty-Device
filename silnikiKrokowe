@@ -1,0 +1,23 @@
+#include<Stepper.h>
+
+#define ILOSC_KROKOW_DOL 34
+#define ILOSC_KROKOW_GORA 34
+
+Stepper silnik1(ILOSC_KROKOW_DOL, pin1, pin2, pin3, pin4);
+Stepper silnik2(ILOSC_KROKOW_GORA, pin1, pin2, pin3, pin4);
+
+setup() {
+
+
+}
+
+loop() {
+	silnik1.setSpeed(500);
+	silnik1.step(512);
+	silnik2.setSpeed(500);
+	silnik2.step(1024);
+	delay(1000);
+
+
+
+}

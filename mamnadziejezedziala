@@ -1,0 +1,270 @@
+/*
+ Name:		arduino_projekt_1.ino
+ Created:	03.01.2023 20:02:41
+ Author:	Werka
+*/
+//LUNA
+#include <Arduino.h>     // every sketch needs this
+#include <Wire.h>        // instantiate the Wire library
+#include <TFLI2C.h>      // TFLuna-I2C Library v.0.2.0
+// SILNIK
+#include<Stepper.h>
+#include <Wire.h>
+
+
+#define STEPPER1_PIN_1 4
+#define STEPPER1_PIN_2 5
+#define STEPPER1_PIN_3 6
+#define STEPPER1_PIN_4 7
+int step_number_1 = 0;
+int step_number_2 = 0;
+
+// Define number of steps per revolution:
+const int stepsPerRevolution = 200;
+
+// Give the motor control pins names:
+#define pwmA 3
+#define pwmB 11
+#define brakeA 9
+#define brakeB 8
+#define dirA 12
+#define dirB 13
+
+// piny dla czujnika swiatla
+int prosty = A0;
+int lewy = A1;
+int prawy = A2;
+
+// pare zmiennych globalnych do użycia ;)
+int kroki_silnik1 = 0;
+int kroki_silnik2 = 0;
+float natezenie = 0;
+float poprzednie_natezenie = 0;
+int tablica_danych[2];
+int tablica_poprzednich_danych[] = {0,0};
+int flag = 1;
+int temp = 0; // nie wiem po co to, ale bylo 
+// Initialize the stepper library on the motor shield:
+Stepper myStepper1 = Stepper(stepsPerRevolution, dirA, dirB);
+Stepper myStepper2 = Stepper(stepsPerRevolution, STEPPER1_PIN_1, STEPPER1_PIN_2, STEPPER1_PIN_3, STEPPER1_PIN_4);
+// LUNA
+TFLI2C tflI2C;
+// --------------------------------------------------------------------------------//
+   SoftwareSerial mySerial(2, 3); // RX, TX // POWTARZA SIE PIN 3!!!!!!!!!!!       //
+// --------------------------------------------------------------------------------//
+
+int16_t  tfDist;    // distance in centimeters
+int16_t  tfAddr = TFL_DEF_ADR;  // use this default I2C address or
+                                // set variable to your own value
+
+void setup() {
+    // setup dla luny <3
+    tflI2C.begin(mySerial);
+    Wire.begin();           // initialize Wire library
+    // ustawiam piny dla czujnika swiatla czy coś
+    pinMode(prosty, INPUT);
+    pinMode(lewy, INPUT);
+    pinMode(prawy, INPUT);
+
+    pinMode(pwmA, OUTPUT);
+    pinMode(pwmB, OUTPUT);
+    pinMode(brakeA, OUTPUT);
+    pinMode(brakeB, OUTPUT);
+
+    digitalWrite(pwmA, HIGH);
+    digitalWrite(pwmB, HIGH);
+    digitalWrite(brakeA, LOW);
+    digitalWrite(brakeB, LOW);
+
+    // Set the motor speed (RPMs):
+    myStepper1.setSpeed(60);
+
+    pinMode(STEPPER1_PIN_1, OUTPUT);
+    pinMode(STEPPER1_PIN_2, OUTPUT);
+    pinMode(STEPPER1_PIN_3, OUTPUT);
+    pinMode(STEPPER1_PIN_4, OUTPUT);
+
+    delay(200);
+    Serial.begin(9600);
+}
+
+void loop() {
+    int value1 = analogRead(prosty); // wartosc natezenia w luxxxjach 
+    int value2 = analogRead(lewy); 
+    int value3 = analogRead(prawy); 
+    natezenie = value1;
+
+    // porownanie wartosci natezen na czujnikach i wywolanie odpowiedniej dla nich funkcji 
+    while (flag) {
+        if (value1 > value2 && value1 > value3) {
+            prosto();
+            delay(2);
+        }
+        else if (value2 > value1 && value2 > value3) {
+            lewo();
+            delay(2);
+        }
+        else if (value3 > value1 && value3 > value2) {
+            prawo();
+            delay(2);
+        }
+        tablica_danych[0] = kroki_silnik1;
+        tablica_danych[1] = kroki_silnik2;
+        poprzednie_natezenie = natezenie;
+        if (poprzednie_natezenie > natezenie)
+        {
+            flag = 0;
+            step_back();
+        }
+    }
+
+    tablica_poprzednich_danych[0] = tablica_danych[0];
+    tablica_poprzednich_danych[1] = tablica_danych[1];
+
+        delay(2);
+}
+
+void step_back() {
+    int roznica_gornego = tablica_poprzednich_danych[0] - tablica_danych[0];
+    int roznica_dolnego = tablica_poprzednich_danych[1] - tablica_danych[1];
+    for (int i = 0; i < roznica_gornego; i++) {
+        if (roznica_gornego < 0)
+        {
+            lewo();
+        }
+        else {
+            prawo();
+        }
+    }
+    for (int i = 0; i < roznica_dolnego; i++) {
+        if (roznica_dolnego < 0) {
+            myStepper1.step(1);
+            kroki_silnik2 = kroki_silnik2 + 1; // dodajemy krok
+        }
+        else {
+            myStepper1.step(-1);
+            kroki_silnik2 = kroki_silnik2 - 1; // odejmujemy krok
+        }
+
+
+    }
+}
+
+void prosto() {
+    // funkcja prosto powoduje przekrecenie sie dolnego silnika w te strone, w ktora nachylony jest "wskaznik".
+    // strona, w ktora sie kreci zalezna jest od wartosci kroki_silnik1, jesli dodatnie - w prawo, ujemne - w lewo (albo na odwrot XD)
+    if (kroki_silnik1 > 0)
+    {
+        myStepper1.step(1);
+        kroki_silnik2 = kroki_silnik2 + 1; // dodajemy krok
+    }
+    else {
+        myStepper1.step(-1);
+        kroki_silnik2 = kroki_silnik2 - 1; // odejmujemy krok
+    }
+
+}
+void prawo() {
+    // funkcja prawo powoduje obrot gornego silnika w prawo do momentu, gdy natezenie bedzie najwyzsze na czujniku na wprost
+    OneStep_1(true);
+    kroki_silnik1 = kroki_silnik1 + 1; // dodajemy krok
+
+}
+void lewo() {
+    // funkcja lewo powoduje obrot gorego silnika w lewo do momentu, gdy natezenie bedzie najwyzsze na czujniku na wprost
+    OneStep_1(false);
+    kroki_silnik1 = kroki_silnik1 - 1; // odejmujemy krok
+
+}
+
+// wypisanie aktualnych danych
+void wypisz_dane() {
+    // tutaj trzeba dokladnie przeksztalcic kroki i najelpe wypisać kąty
+    Serial.print(kroki_silnik1);
+    Serial.print(" ");
+    Serial.print(kroki_silnik1);
+    Serial.print(" ");
+    Serial.print(natezenie);
+    Serial.print(" ");
+    czytaj_odleglosc();
+    Serial.print(" ");
+}
+
+// odczytanie danych z LUNY 
+void czytaj_odleglosc() {
+    // tutaj trzeba dokladnie przeksztalcic ta odleglosc w zaleznosci od tego, gdzie jest luna
+    // tzn. pododawac i poodejmowac :')
+    if (tflI2C.getData(tfDist, tfAddr)) // If read okay...
+    {
+        Serial.print(tfDist);          // print the data...
+    }
+    else {
+        tflI2C.printStatus();           // else, print error.
+    }
+}
+
+// funkcja pozwalajaca na zrobienie jednego kroku w silniku gornym 
+// dir == false - obrot w jedna
+// dir == true - obrot w druga 
+void OneStep_1(bool dir) {
+
+    if (dir) {
+        switch (step_number_1) {
+        case 0:
+            digitalWrite(STEPPER1_PIN_1, HIGH);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+            break;
+        case 1:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, HIGH);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+            break;
+        case 2:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, HIGH);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+            break;
+        case 3:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, HIGH);
+            break;
+        }
+    }
+    else {
+        switch (step_number_1) {
+        case 0:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, HIGH);
+            break;
+        case 1:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, HIGH);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+            break;
+        case 2:
+            digitalWrite(STEPPER1_PIN_1, LOW);
+            digitalWrite(STEPPER1_PIN_2, HIGH);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+            break;
+        case 3:
+            digitalWrite(STEPPER1_PIN_1, HIGH);
+            digitalWrite(STEPPER1_PIN_2, LOW);
+            digitalWrite(STEPPER1_PIN_3, LOW);
+            digitalWrite(STEPPER1_PIN_4, LOW);
+        }
+    }
+    step_number_1++;
+    if (step_number_1 > 3) {
+        step_number_1 = 0;
+    }
+}

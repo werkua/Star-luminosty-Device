@@ -11,7 +11,7 @@
 #include<Stepper.h>
 #include <Wire.h>
 
-
+#define abs(x) ((x)>0?(x):-(x))
 #define STEPPER1_PIN_1 4
 #define STEPPER1_PIN_2 5
 #define STEPPER1_PIN_3 6
@@ -120,14 +120,14 @@ void loop() {
 
     tablica_poprzednich_danych[0] = tablica_danych[0];
     tablica_poprzednich_danych[1] = tablica_danych[1];
-
-        delay(2);
+    wypisz_dane();
+    delay(2);
 }
 
 void step_back() {
     int roznica_gornego = tablica_poprzednich_danych[0] - tablica_danych[0];
     int roznica_dolnego = tablica_poprzednich_danych[1] - tablica_danych[1];
-    for (int i = 0; i < roznica_gornego; i++) {
+    for (int i = 0; i < abs(roznica_gornego); i++) {
         if (roznica_gornego < 0)
         {
             lewo();
@@ -136,7 +136,7 @@ void step_back() {
             prawo();
         }
     }
-    for (int i = 0; i < roznica_dolnego; i++) {
+    for (int i = 0; i < abs(roznica_dolnego); i++) {
         if (roznica_dolnego < 0) {
             myStepper1.step(1);
             kroki_silnik2 = kroki_silnik2 + 1; // dodajemy krok
@@ -181,13 +181,13 @@ void lewo() {
 void wypisz_dane() {
     // tutaj trzeba dokladnie przeksztalcic kroki i najelpe wypisać kąty
     Serial.print(kroki_silnik1);
-    Serial.print(" ");
-    Serial.print(kroki_silnik1);
-    Serial.print(" ");
+    Serial.print('\t');
+    Serial.print(kroki_silnik2);
+    Serial.print('\t');
     Serial.print(natezenie);
-    Serial.print(" ");
+    Serial.print('\t');
     czytaj_odleglosc();
-    Serial.print(" ");
+    Serial.print('\t');
 }
 
 // odczytanie danych z LUNY 
@@ -268,3 +268,5 @@ void OneStep_1(bool dir) {
         step_number_1 = 0;
     }
 }
+
+
